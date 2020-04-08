@@ -48,42 +48,55 @@ def process():
     optimizer = str(datastore["optimizer"])
     content = '''
 import tensorflow as tf
+import numpy as np
 logdir="logboard"
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)'''
 
-    if train_file_type=='uploaded':
+    if train_file_type == 'uploaded':
         content += '''
 from sklearn.model_selection import train_test_split
+import pandas as pd
+df = pd.read_csv('data.csv')
+msk = np.random.rand(len(df)) < 0.8
 
-'''
+x_train = df[msk]
+x_test = df[~msk]
+y_train = x_train[{}]
+y_test = y_train[{}]
+x_train.drop([{}], axis = 1)
+x_test.drop([{}], axis = 1)
+'''.format(datastore['labelcolumn'], datastore['labelcolumn'], datastore['labelcolumn'], datastore['labelcolumn'])
     else:
-         content += '''
+        content += '''
 dataset = tf.keras.datasets.{}
 (x_train, y_train), (x_test, y_test) = dataset.load_data()'''.format(dataset)
 
-    content+='''
+    content += '''
 model = tf.keras.models.Sequential([
     tf.keras.layers.{}(input_shape=({}))'''.format(datastore["layers"]["1"]["type"], datastore["layers"]["1"]["inputsize"])
 
     for i in range(2, datastore["layers"]["count"]+1):
-        
+
         if datastore["layers"][str(i)]["type"] in activations:
             content = content + '''
-        ,tf.keras.layers.{}({})'''.format(datastore['layers'][str(i)]['type'], 
-        datastore["layers"][str(i)]["outputsize"])
+        ,tf.keras.layers.{}({})'''.format(datastore['layers'][str(i)]['type'],
+                                          datastore["layers"][str(i)]["outputsize"])
 
         elif datastore["layers"][str(i)]["type"] == 'Conv2D':
             content = content + '''
-        ,tf.keras.layers.{}({}, {}, activation=tf.nn.{})'''.format(datastore["layers"][str(i)]['type'], 
-        int(datastore["layers"][str(i)]['outputsize']), 
-        datastore["layers"][str(i)]['inputsize'],
-        datastore["layers"][str(i)]["act"])
-        
+        ,tf.keras.layers.{}({}, {}, activation=tf.nn.{})'''.format(datastore["layers"][str(i)]['type'],
+                                                                   int(datastore["layers"][str(
+                                                                       i)]['outputsize']),
+                                                                   datastore["layers"][str(
+                                                                       i)]['inputsize'],
+                                                                   datastore["layers"][str(i)]["act"])
+
         else:
             content = content + '''
-        ,tf.keras.layers.{}({}, activation=tf.nn.{})'''.format(datastore["layers"][str(i)]['type'], 
-        int(datastore["layers"][str(i)]['outputsize']), 
-        datastore["layers"][str(i)]["act"])
+        ,tf.keras.layers.{}({}, activation=tf.nn.{})'''.format(datastore["layers"][str(i)]['type'],
+                                                               int(datastore["layers"][str(
+                                                                   i)]['outputsize']),
+                                                               datastore["layers"][str(i)]["act"])
 
     content = content + '''])
 model.compile(optimizer='{}',

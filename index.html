@@ -29,6 +29,7 @@
   </select>
   <form action="/fileupload" method="post" enctype="multipart/form-data">
     <input type="file" name="file" />
+    <input type="text" id="labelcolumn" onchange="selectLabelColumn()" />
     <input type="submit" value="Upload">
   </form>
   <script src="https://d3js.org/d3.v5.min.js"></script>
@@ -65,10 +66,16 @@
       }
     }
     */
+    function selectLabelColumn() {
+      let e = document.getElementById('labelcolumn');
+      state["labelcolumn"] = e.value;
+    }
+
     function selectDataset() {
       let e = document.getElementById('dataset');
       state["dataset"] = e.options[e.selectedIndex].value;
     }
+
     function selectOptimizer() {
       let e = document.getElementById('optimizer');
       state["optimizer"] = e.options[e.selectedIndex].value;
@@ -270,9 +277,9 @@
         event.preventDefault();
       });
     });
-    
+
     function resultpage() {
-      setTimeout(function() {
+      setTimeout(function () {
         window.open('/resultpage', "_blank");
         window.open('http://localhost:6006/', "_blank");
       }, 90000);
