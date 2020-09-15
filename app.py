@@ -17,7 +17,6 @@ train_file_name = ''
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-
 @app.route('/')
 def index():
     return Response(open('index.html').read(), mimetype='text/html')
@@ -44,18 +43,25 @@ def process():
     json_string = request.form['state']
     datastore = json.loads(json_string)
     dataset = datastore['dataset']
-    activations = ["Dropout", "MaxPooling"]
+    activations = ["MaxPooling"]
     optimizer = str(datastore["optimizer"])
     content = '''
 import tensorflow as tf
 import numpy as np
 logdir="logboard"
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)'''
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
+def vectorize(sequences, dimension = 10000):
+    results = np.zeros((len(sequences), dimension))
+    for i, sequence in enumerate(sequences):
+        results[i][sequence] = 1
+    return results
+'''
 
     if train_file_type == 'uploaded':
         content += '''
 from sklearn.model_selection import train_test_split
 import pandas as pd
+
 df = pd.read_csv('data.csv')
 msk = np.random.rand(len(df)) < 0.8
 
@@ -70,6 +76,11 @@ x_test.drop([{}], axis = 1)
         content += '''
 dataset = tf.keras.datasets.{}
 (x_train, y_train), (x_test, y_test) = dataset.load_data()'''.format(dataset)
+        if dataset=='imdb':
+            content += '''
+x_train = vectorize(x_train, len(x_train))
+y_train = vectorize(y_train, len(y_train))
+        '''
 
     content += '''
 model = tf.keras.models.Sequential([
@@ -90,6 +101,13 @@ model = tf.keras.models.Sequential([
                                                                    datastore["layers"][str(
                                                                        i)]['inputsize'],
                                                                    datastore["layers"][str(i)]["act"])
+
+        elif datastore["layers"][str(i)]["type"] == 'Dropout':
+            content = content + '''
+        ,tf.keras.layers.{}({},noise_shape=None, seed=None)'''.format(
+            datastore["layers"][str(i)]['type'],
+            datastore["layers"][str(i)]["inputsize"]
+        )
 
         else:
             content = content + '''
